@@ -42,7 +42,7 @@ Assume that <code>double</code> has a size and alignment requirement of 8 bytes,
 Of course, as most of you know, <code>sizeof(A)</code> returns 16. But why? Well, consider a naive implementation that stores A with 12 bytes. Then consider an array <code>A arr[2];</code>. Let's say that this particular array is located at memory address <code>0x400</code>, which satisfies the alignment requirements of <code>arr[0]</code>. Then, <code>arr[1]</code> should be located at address <code>0x400 + sizeof(A)</code>, or <code>0x40C</code>. However <code>0x40C % 0x10 == 0x0C</code>, meaning <code>arr[1]</code> would be misaligned. Whoops!
             </p>
             <p>
-To solve this problem, C (and C++) rounds up <code>sizeof(A)</code> to a multiple of A's alignment, meaning padding is inserted at the end of <code>arr[0]</code> such that <code>arr[1]</code> will be aligned. However, consider:
+To solve this problem, C (and C++) round up <code>sizeof(A)</code> to a multiple of A's alignment, meaning padding is inserted at the end of <code>arr[0]</code> such that <code>arr[1]</code> will be aligned. However, consider:
 <code class="block">struct B{
     A f;
     int g;
