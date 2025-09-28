@@ -1,6 +1,12 @@
-body{
-    background-color: lightskyblue;
+html{
+    background-color: white;
     font-size: 120%;
+    display: flex;
+    justify-content: center;
+    color: #202122;
+}
+body{
+    width: 70vw;
 }
 p{
     margin: 0.1lh;

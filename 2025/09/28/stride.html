@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="../../../page.css">
+        <title>Stop conflating size and stride | maf's Blog</title>
+        <style>
+            .block{
+                margin-top: 4px;
+                margin-bottom: 4px;
+                padding-top: 4px;
+                padding-bottom: 4px;
+                display: block;
+            }
+            code{
+                background-color: #747474;
+                color: white;
+                width: fit-content;
+                padding-inline: 4px;
+                box-sizing: border-box;
+                display: inline-block;
+                font-weight: 500;
+                &.block{
+                    padding-inline-end: 10ch;
+                    white-space: pre;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1 class="nmm">Stop conflating size and stride</h1>
+        <section>
+            <h2 class="nmm">Alignment and padding</h2>
+            <p>
+Consider the following C struct:
+<code class="block" lang="c">struct A{
+    double x;
+    int y;
+};</code>
+Assume that <code>double</code> has a size and alignment requirement of 8 bytes, and <code>int</code> has a size and aligmnet requirement of 4 bytes. In total, struct A stores 8+4 = 12 bytes of data.
+            </p>
+            <p>
+Of course, as most of you know, <code>sizeof(A)</code> returns 16. But why? Well, consider a naive implementation that stores A with 12 bytes. Then consider an array <code>A arr[2];</code>. Let's say that this particular array is located at memory address <code>0x400</code>, which satisfies the alignment requirements of <code>arr[0]</code>. Then, <code>arr[1]</code> should be located at address <code>0x400 + sizeof(A)</code>, or <code>0x40C</code>. However <code>0x40C % 0x10 == 0x0C</code>, meaning <code>arr[1]</code> would be misaligned. Whoops!
+            </p>
+            <p>
+To solve this problem, C (and C++) rounds up <code>sizeof(A)</code> to a multiple of A's alignment, meaning padding is inserted at the end of <code>arr[0]</code> such that <code>arr[1]</code> will be aligned. However, consider:
+<code class="block">struct B{
+    A f;
+    int g;
+};</code>
+In this case, the extra padding at the end of <code>B::f</code> is useless, since <code>B::g</code> would be just as happy being aligned on a 4-byte boundary, had <code>sizeof(A)</code> have been 12. More generally:
+<span class="block">For an array <code>f</code> with elements of some struct <code>A</code> (while considering a non-array variable declaration to be an array of size 1), the padding at the end of the <em>last</em> element of that array is <em>potentially removable</em>.</span>
+Here, "potentially removable" means that the padding could be useless, in the case where the data that immediately succeeds <code>f</code> has a weaker alignment requirement than <code>A</code> and would be properly aligned even without the padding.
+            </p>
+            <h2>The solution</h2>
+            <p>
+Let's redefine some things. From now on, we will let <code>sizeof(A)</code> to denote the <em>unpadded</em> size of A, meaning the padding at the end is not counted. Note that padding can still exist <em>within</em> A, and they would still be counted. Consider:
+<code class="block">struct C{
+    int i;
+    double j;
+    int k;
+};</code>
+Since we cannot specify our class <code>C</code> to start at addresses with a specific remainder(i.e. where <code>addr % 16 == 12</code>), <code>i</code> has to be aligned to a 8-byte boundary, with a 4-byte padding after it to align <code>j</code>. In this case, <code>sizeof(C) == 20</code> (4 bytes for <code>i</code>, 4 bytes for the padding between<code>i</code> and <code>j</code>, 8 bytes for <code>j</code>, and 4 bytes for <code>k</code>). Then, let's denote the <em>padded</em> size of A, defined to be <code>sizeof(A)</code> rounded up to a multiple of <code>alignof(A)</code>, as <code>strideof(A)</code> (observe that this is the exactly <code>sizeof(A)</code> as defined by C). You will see the reason for the name shortly.
+            </p>
+            <p>
+Now, let's consider the array type <code>A[5]</code>. Recall that each element in the array has to be aligned. That means that if for an array <code>A arr[5]</code>, <code>arr[0]</code> is at <code>0x400</code>, <code>arr[1]</code> must be at least placed at <code>0x410</code>. In fact, the distance between two array elements is exactly <code>strideof(A)</code>. However, we also know that the last element of an array shouldn't always be padded. Therefore, we can naturally define <code>sizeof(A[5])</code> to be <code>strideof(A)*4+sizeof(A) == 76 /* 0x4C */</code>, and <code>strideof(A[5])</code> to be <code>sizeof(A)*5 == 80 /* 0x50 */</code>. Now, what have we accomplished with these new definitions? Well, structs and arrays (even nested structs and multidimensional arrays) continue to work, with all data memberes aligned correctly. However, we have also introduced a measure of the true size necessary to store an object. This means that for example when we dynamically allocate an array, we can say <code>A* arr = malloc(strideof(A)*(len-1)+sizeof(A));</code> (assuming <code>len > 0</code>) — eliminating the allocation of useless padding bytes after the array and saving memory space.  Additionally, for a case like <code>struct B</code>, instead of finding out <code>B::g</code>'s offset by taking <code>offsetof(B,f)+strideof(A)</code> rounded up to <code>alignof(int)</code>, which is what C does, we can take <code>offsetof(B,f)+<em>sizeof</em>(A)</code> rounded up, which would save superfluous padding bytes between <code>B::f</code> and <code>B::g</code>.
+            </p>
+        </section>
+    </body>
+</html>
