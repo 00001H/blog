@@ -11,6 +11,14 @@
                 padding-bottom: 4px;
                 display: block;
             }
+            .def{
+                background-color: #95dcf3;
+                margin: 10px auto;
+                width: 58%;
+                padding: 10px;
+                border-radius: 10px;
+                box-sizing: border-box;
+            }
             code{
                 background-color: #747474;
                 color: white;
@@ -48,7 +56,7 @@ To solve this problem, C (and C++) round up <code>sizeof(A)</code> to a multiple
     int g;
 };</code>
 In this case, the extra padding at the end of <code>B::f</code> is useless, since <code>B::g</code> would be just as happy being aligned on a 4-byte boundary, had <code>sizeof(A)</code> have been 12. More generally:
-<span class="block">For an array <code>f</code> with elements of some struct <code>A</code> (while considering a non-array variable declaration to be an array of size 1), the padding at the end of the <em>last</em> element of that array is <em>potentially removable</em>.</span>
+<span class="block def">For an array <code>f</code> with elements of some struct <code>A</code> (while considering a non-array variable declaration to be an array of size 1), the padding at the end of the <em>last</em> element of that array is <em>potentially removable</em>.</span>
 Here, "potentially removable" means that the padding could be useless, in the case where the data that immediately succeeds <code>f</code> has a weaker alignment requirement than <code>A</code> and would be properly aligned even without the padding.
             </p>
             <h2>The solution</h2>
